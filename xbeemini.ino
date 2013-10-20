@@ -18,19 +18,11 @@ String sendstring = "";
 boolean nts = false; //need to send sendstring
 
 unsigned long accelCheckTime;
-const int accelAVGarraySize = 14;
-int accel1avgXarray[accelAVGarraySize];
-int accel1avgYarray[accelAVGarraySize];
-int accel1avgZarray[accelAVGarraySize];
-int accel1counter = 0;  //keeps track of where we are in the accel1 average arrays, used for determining what the average of the last 100 readings have been.
-int maffa = 18;  //was 27.
-int minAccelFFamplitudeX = maffa;
-int minAccelFFamplitudeY = maffa;
-int minAccelFFamplitudeZ = maffa;
-int lastAXdifference = 0;  //what was the last accelerometer difference?
-int lastAYdifference = 0;  //what was the last accelerometer difference?
-int lastAZdifference = 0;  //what was the last accelerometer difference?
-int accelCheckDelay = 16; //milliseconds between accel checks.
+int maffa = 15;
+int lastAX = 341;  
+int lastAY = 353;  
+int lastAZ = 406;  
+int accelCheckDelay = 20; //milliseconds between accel checks.
 
 unsigned long lastcmdtime = millis();
 int maxcmdage = 333; //max time in milliseconds arduino will wait before switching servo outputs back to neutral
@@ -60,85 +52,35 @@ void pc(String cmd, int cmdval) {
   Serial.println(cmdval);
 }
 
-void ffb() {
+void watchaccel() {
   theTime = millis();
   if(theTime > accelCheckTime) {
      int accelX = analogRead(A0);    // read accel's X value
      int accelY = analogRead(A1);    // read accel's Y value
      int accelZ = analogRead(A2);    // read accel's Z value
      
-     //minAccelFFamplitude
-     int accelXaverage = 0;
-     int accelYaverage = 0;
-     int accelZaverage = 0;
-     accel1avgXarray[accel1counter] = accelX; //put X reading into array
-     accel1avgYarray[accel1counter] = accelY; //put Y reading into array
-     accel1avgZarray[accel1counter] = accelZ; //put Z reading into array
-     accel1counter++;
-     if(accel1counter > accelAVGarraySize) {
-       accel1counter = 0;
-     }
-     for(int a = 0; a<accelAVGarraySize; a++) {
-         //add together, to update average...
-         accelXaverage = accelXaverage + accel1avgXarray[a];
-         accelYaverage = accelYaverage + accel1avgYarray[a];
-         accelZaverage = accelZaverage + accel1avgZarray[a];
-     }
-     accelXaverage = accelXaverage / accelAVGarraySize;
-     accelYaverage = accelYaverage / accelAVGarraySize;
-     accelZaverage = accelZaverage / accelAVGarraySize;
-     
-     //now find out if there's enough of a disturbance to report...
-     int aXdifference = 0;
-     int aYdifference = 0;
-     int aZdifference = 0;
      //determine if X reading is out of range
-     int accelUnder = accelXaverage - minAccelFFamplitudeX;
-     int accelOver = accelXaverage + minAccelFFamplitudeX;
-     if(accelX <= accelUnder) {
-       aXdifference = accelXaverage - accelX;
-     } else if (accelX >= accelOver) {
-       aXdifference = accelX - accelXaverage;
+     int accelUnder = lastAX - maffa;
+     int accelOver = lastAX + maffa;
+     if(accelX <= accelUnder || accelX >= accelOver) {
+       loadsendstring("<", accelX);
+       lastAX = accelX;
+       nts = true;
      }
      //determine if Y reading is out of range
-     accelUnder = accelYaverage - minAccelFFamplitudeY;
-     accelOver = accelYaverage + minAccelFFamplitudeY;
-     if(accelY <= accelUnder) {
-       aYdifference = accelYaverage - accelY;
-     } else if (accelY >= accelOver) {
-       aYdifference = accelY - accelYaverage;
+     accelUnder = lastAY - maffa;
+     accelOver = lastAY + maffa;
+     if(accelY <= accelUnder || accelY >= accelOver) {
+       loadsendstring(">", accelY);
+       lastAY = accelY;
+       nts = true;
      }
      //determine if Z reading is out of range
-     accelUnder = accelZaverage - minAccelFFamplitudeZ;
-     accelOver = accelZaverage + minAccelFFamplitudeZ;
-     if(accelZ <= accelUnder) {
-       aZdifference = accelZaverage - accelZ;
-     } else if (accelZ >= accelOver) {
-       aZdifference = accelZ - accelZaverage;
-     }
-     
-     //X
-     if(aXdifference != lastAXdifference) {
-       //the affXresult has changed, send to host.
-       //loadsendstring("<", aXdifference); //ptb(0x3C); //print "<" to spi uart, for X
-       loadsendstring("<", accelX);
-       lastAXdifference = aXdifference;
-       nts = true;
-     }
-     //Y
-     if(aYdifference != lastAYdifference) {
-       //the affZresult has changed, send to host.
-       //loadsendstring(">", aYdifference); //ptb(0x3E); //print ">", for Y
-       loadsendstring(">", accelY);
-       lastAYdifference = aYdifference;
-       nts = true;
-     }
-     //Z
-     if(aZdifference != lastAZdifference) {
-       //the affZresult has changed, send to host.
-       //loadsendstring("^", aZdifference); //ptb(0x5E); //print "^", for Z.
+     accelUnder = lastAZ - maffa;
+     accelOver = lastAZ + maffa;
+     if(accelZ <= accelUnder || accelZ >= accelOver) {
        loadsendstring("^", accelZ);
-       lastAZdifference = aZdifference;
+       lastAZ = accelZ;
        nts = true;
      }
      accelCheckTime = theTime + accelCheckDelay;
@@ -202,7 +144,7 @@ void serialListen()
 
 void loop() {
   serialListen();
-  ffb();
+  watchaccel();
   if(nts) {
     sendsendstring();
   }
