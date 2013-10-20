@@ -63,7 +63,7 @@ void watchaccel() {
      int accelUnder = lastAX - maffa;
      int accelOver = lastAX + maffa;
      if(accelX <= accelUnder || accelX >= accelOver) {
-       loadsendstring("<", accelX);
+       loadsendstring("x", accelX);
        lastAX = accelX;
        nts = true;
      }
@@ -71,7 +71,7 @@ void watchaccel() {
      accelUnder = lastAY - maffa;
      accelOver = lastAY + maffa;
      if(accelY <= accelUnder || accelY >= accelOver) {
-       loadsendstring(">", accelY);
+       loadsendstring("y", accelY);
        lastAY = accelY;
        nts = true;
      }
@@ -79,7 +79,7 @@ void watchaccel() {
      accelUnder = lastAZ - maffa;
      accelOver = lastAZ + maffa;
      if(accelZ <= accelUnder || accelZ >= accelOver) {
-       loadsendstring("^", accelZ);
+       loadsendstring("z", accelZ);
        lastAZ = accelZ;
        nts = true;
      }
