@@ -15,6 +15,7 @@ String usbCommand = "";
 boolean myflag = false;
 char cr = 13; //carriage return
 String sendstring = "";
+boolean nts = false; //need to send sendstring
 
 unsigned long accelCheckTime;
 const int accelAVGarraySize = 14;
@@ -22,7 +23,7 @@ int accel1avgXarray[accelAVGarraySize];
 int accel1avgYarray[accelAVGarraySize];
 int accel1avgZarray[accelAVGarraySize];
 int accel1counter = 0;  //keeps track of where we are in the accel1 average arrays, used for determining what the average of the last 100 readings have been.
-int maffa = 27;  //was 27.
+int maffa = 18;  //was 27.
 int minAccelFFamplitudeX = maffa;
 int minAccelFFamplitudeY = maffa;
 int minAccelFFamplitudeZ = maffa;
@@ -45,9 +46,14 @@ void setup() {
 void sendsendstring() {
   Serial.println(sendstring);
   sendstring = "";
+  nts = false;
 }
 void loadsendstring(String cmd, int cmdval) {
-  sendstring = sendstring + cmd + cmdval + cr;
+  if(sendstring == "") {
+    sendstring = sendstring + cmd + cmdval;
+  } else {
+    sendstring = sendstring + "&" + cmd + cmdval;
+  }
 }
 void pc(String cmd, int cmdval) {
   Serial.print(cmd);
@@ -111,14 +117,13 @@ void ffb() {
        aZdifference = accelZ - accelZaverage;
      }
      
-     boolean hc = false;
      //X
      if(aXdifference != lastAXdifference) {
        //the affXresult has changed, send to host.
        //loadsendstring("<", aXdifference); //ptb(0x3C); //print "<" to spi uart, for X
        loadsendstring("<", accelX);
        lastAXdifference = aXdifference;
-       hc = true;
+       nts = true;
      }
      //Y
      if(aYdifference != lastAYdifference) {
@@ -126,7 +131,7 @@ void ffb() {
        //loadsendstring(">", aYdifference); //ptb(0x3E); //print ">", for Y
        loadsendstring(">", accelY);
        lastAYdifference = aYdifference;
-       hc = true;
+       nts = true;
      }
      //Z
      if(aZdifference != lastAZdifference) {
@@ -134,12 +139,9 @@ void ffb() {
        //loadsendstring("^", aZdifference); //ptb(0x5E); //print "^", for Z.
        loadsendstring("^", accelZ);
        lastAZdifference = aZdifference;
-       hc = true;
+       nts = true;
      }
      accelCheckTime = theTime + accelCheckDelay;
-     if(hc) {
-       sendsendstring();
-     }
   }
 }
 
@@ -201,4 +203,7 @@ void serialListen()
 void loop() {
   serialListen();
   ffb();
+  if(nts) {
+    sendsendstring();
+  }
 }
